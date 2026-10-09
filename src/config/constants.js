@@ -75,8 +75,24 @@ export const DEFAULT_SORT = Object.freeze({
   direction: SORT_DIRECTIONS.DESC,
 })
 
+export const THEMES = Object.freeze({
+  SYSTEM: 'system',
+  LIGHT: 'light',
+  DARK: 'dark',
+})
+
+export const THEME_OPTIONS = Object.freeze([
+  Object.freeze({ value: THEMES.SYSTEM, label: 'System', description: 'Match your device setting' }),
+  Object.freeze({ value: THEMES.LIGHT, label: 'Light', description: 'Always use the light theme' }),
+  Object.freeze({ value: THEMES.DARK, label: 'Dark', description: 'Always use the dark theme' }),
+])
+
+export const DEFAULT_THEME = THEMES.SYSTEM
+
+// PREFERENCES is also read by the inline theme script in index.html; keep them in sync.
 export const STORAGE_KEYS = Object.freeze({
   TASKS: 'taskflow:tasks',
+  PREFERENCES: 'taskflow:preferences',
 })
 
 /** Current schema version of the persisted task envelope. */
