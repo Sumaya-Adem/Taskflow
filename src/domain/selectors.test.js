@@ -252,3 +252,73 @@ describe('selectVisibleTasks', () => {
     expect(selectVisibleTasks(TASKS, { query: 'zzz' }, { now: NOW })).toEqual([])
   })
 })
+
+describe('Phase 4 additions', () => {
+  describe('due "soon" filter', () => {
+    const tasks = [
+      buildTask({ id: 'late', dueDate: '2026-10-07' }),
+      buildTask({ id: 'today', dueDate: '2026-10-08' }),
+      buildTask({ id: 'plus3', dueDate: '2026-10-11' }), // boundary: DUE_SOON_DAYS away
+      buildTask({ id: 'plus4', dueDate: '2026-10-12' }),
+      buildTask({ id: 'none', dueDate: null }),
+      buildTask({ id: 'done', dueDate: '2026-10-09', completed: true }),
+    ]
+
+    it('matches active tasks due today through the next DUE_SOON_DAYS days', () => {
+      expect(ids(filterTasks(tasks, { due: 'soon' }, { now: NOW }))).toEqual(['today', 'plus3'])
+    })
+
+    it('combines with other filters and search', () => {
+      const mixed = [
+        buildTask({ id: 'a', title: 'Call bank', priority: 'high', dueDate: '2026-10-09' }),
+        buildTask({ id: 'b', title: 'Call mum', priority: 'low', dueDate: '2026-10-09' }),
+        buildTask({ id: 'c', title: 'Email bank', priority: 'high', dueDate: '2026-10-30' }),
+      ]
+      expect(
+        ids(selectVisibleTasks(mixed, { query: 'call', filters: { due: 'soon', priority: 'high' } }, { now: NOW })),
+      ).toEqual(['a'])
+    })
+  })
+
+  describe('status sort', () => {
+    const tasks = [
+      buildTask({ id: 'done-old', completed: true, createdAt: '2026-10-01T00:00:00.000Z' }),
+      buildTask({ id: 'active-old', createdAt: '2026-10-02T00:00:00.000Z' }),
+      buildTask({ id: 'done-new', completed: true, createdAt: '2026-10-03T00:00:00.000Z' }),
+      buildTask({ id: 'active-new', createdAt: '2026-10-04T00:00:00.000Z' }),
+    ]
+
+    it('puts active tasks first ascending, newest first within each group', () => {
+      expect(ids(sortTasks(tasks, { field: 'status', direction: 'asc' }))).toEqual([
+        'active-new',
+        'active-old',
+        'done-new',
+        'done-old',
+      ])
+    })
+
+    it('puts completed tasks first descending, keeping the same tie-breakers', () => {
+      expect(ids(sortTasks(tasks, { field: 'status', direction: 'desc' }))).toEqual([
+        'done-new',
+        'done-old',
+        'active-new',
+        'active-old',
+      ])
+    })
+
+    it('is accepted by resolveSort', () => {
+      expect(resolveSort({ field: 'status', direction: 'asc' })).toEqual({ field: 'status', direction: 'asc' })
+    })
+  })
+
+  it('treats ascending and descending due-date sorts as mirror images apart from undated tasks', () => {
+    const tasks = [
+      buildTask({ id: 'x', dueDate: '2026-10-20' }),
+      buildTask({ id: 'none-1', dueDate: null, createdAt: '2026-10-01T00:00:00.000Z' }),
+      buildTask({ id: 'y', dueDate: '2026-10-10' }),
+      buildTask({ id: 'none-2', dueDate: null, createdAt: '2026-10-02T00:00:00.000Z' }),
+    ]
+    expect(ids(sortTasks(tasks, { field: 'dueDate', direction: 'asc' }))).toEqual(['y', 'x', 'none-2', 'none-1'])
+    expect(ids(sortTasks(tasks, { field: 'dueDate', direction: 'desc' }))).toEqual(['x', 'y', 'none-2', 'none-1'])
+  })
+})

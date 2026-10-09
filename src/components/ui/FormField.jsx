@@ -9,8 +9,20 @@ import styles from './FormField.module.css'
  * always associated:
  *
  *   <FormField label="Title" required>{(props) => <input {...props} />}</FormField>
+ *
+ * Set `showOptional={false}` for controls where "(optional)" adds no meaning,
+ * such as filters.
  */
-export function FormField({ label, required = false, hint, error, count, maxLength, children }) {
+export function FormField({
+  label,
+  required = false,
+  showOptional = true,
+  hint,
+  error,
+  count,
+  maxLength,
+  children,
+}) {
   const id = useId()
   const hintId = `${id}-hint`
   const errorId = `${id}-error`
@@ -29,7 +41,7 @@ export function FormField({ label, required = false, hint, error, count, maxLeng
               *
             </span>
           ) : (
-            <span className={styles.optional}>(optional)</span>
+            showOptional && <span className={styles.optional}>(optional)</span>
           )}
         </label>
         {showCounter && (

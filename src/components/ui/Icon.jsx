@@ -38,6 +38,8 @@ const PATHS = {
   flag: ['M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z', 'M4 22v-7'],
   tag: ['M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z', 'M7 7h.01'],
   check: ['M20 6L9 17l-5-5'],
+  search: ['M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z', 'M21 21l-4.35-4.35'],
+  filter: ['M22 3H2l8 9.46V19l4 2v-8.54L22 3z'],
 }
 
 export function Icon({ name, size = 20, label, className }) {
