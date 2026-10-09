@@ -57,7 +57,8 @@ function matchesValue(actual, expected) {
 
 /**
  * Due filters follow `getDueStatus`, so completed tasks are never overdue or
- * due today. `upcoming` means due after today; `none` means no due date.
+ * due. `soon` means due today or within DUE_SOON_DAYS (like `isDueSoon`);
+ * `upcoming` means due after today; `none` means no due date.
  */
 function matchesDue(task, due, now) {
   switch (due) {
@@ -65,6 +66,10 @@ function matchesDue(task, due, now) {
       return getDueStatus(task, now) === DUE_STATUS.OVERDUE
     case DUE_FILTERS.TODAY:
       return getDueStatus(task, now) === DUE_STATUS.TODAY
+    case DUE_FILTERS.SOON: {
+      const status = getDueStatus(task, now)
+      return status === DUE_STATUS.TODAY || status === DUE_STATUS.SOON
+    }
     case DUE_FILTERS.UPCOMING: {
       const status = getDueStatus(task, now)
       return status === DUE_STATUS.SOON || status === DUE_STATUS.UPCOMING
@@ -110,6 +115,7 @@ const COMPARATORS = {
   [SORT_FIELDS.DUE_DATE]: (a, b) => compareStrings(a.dueDate, b.dueDate),
   [SORT_FIELDS.PRIORITY]: (a, b) => (PRIORITY_RANK[a.priority] ?? 0) - (PRIORITY_RANK[b.priority] ?? 0),
   [SORT_FIELDS.TITLE]: (a, b) => titleCollator.compare(a.title, b.title),
+  [SORT_FIELDS.STATUS]: (a, b) => Number(a.completed) - Number(b.completed),
 }
 
 /** Fixed tie-breakers, independent of the chosen direction: newest first, then id. */

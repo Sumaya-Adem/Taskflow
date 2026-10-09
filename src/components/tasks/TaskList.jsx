@@ -2,8 +2,13 @@ import { useId } from 'react'
 import { TaskItem } from './TaskItem.jsx'
 import styles from './TaskList.module.css'
 
-/** The task list with a heading and an active/completed summary. */
-export function TaskList({ tasks, now, onToggle, onEdit, onDelete }) {
+/**
+ * The (possibly filtered) task list with a heading and summary. When
+ * `isFiltered`, the summary reports how many of `totalCount` tasks match;
+ * otherwise it shows the active/completed split. The heading accepts a ref
+ * so focus can be moved to it when a task leaves the filtered view.
+ */
+export function TaskList({ tasks, totalCount = tasks.length, isFiltered = false, headingRef, now, onToggle, onEdit, onDelete }) {
   const headingId = useId()
   const completedCount = tasks.filter((task) => task.completed).length
   const activeCount = tasks.length - completedCount
@@ -11,11 +16,13 @@ export function TaskList({ tasks, now, onToggle, onEdit, onDelete }) {
   return (
     <section className={styles.section} aria-labelledby={headingId}>
       <div className={styles.header}>
-        <h2 id={headingId} className={styles.heading}>
-          All tasks
+        <h2 id={headingId} ref={headingRef} tabIndex={-1} className={styles.heading}>
+          {isFiltered ? 'Matching tasks' : 'All tasks'}
         </h2>
         <p className={styles.summary}>
-          {activeCount} active · {completedCount} completed
+          {isFiltered
+            ? `Showing ${tasks.length} of ${totalCount}`
+            : `${activeCount} active · ${completedCount} completed`}
         </p>
       </div>
       <ul className={styles.list}>

@@ -46,6 +46,8 @@ export const DUE_FILTERS = Object.freeze({
   ALL: FILTER_ALL,
   OVERDUE: 'overdue',
   TODAY: 'today',
+  /** Due today or within DUE_SOON_DAYS (matches isDueSoon). */
+  SOON: 'soon',
   UPCOMING: 'upcoming',
   NONE: 'none',
 })
@@ -63,6 +65,8 @@ export const SORT_FIELDS = Object.freeze({
   DUE_DATE: 'dueDate',
   PRIORITY: 'priority',
   TITLE: 'title',
+  /** Completion status: ascending puts active tasks first. */
+  STATUS: 'status',
 })
 
 export const SORT_DIRECTIONS = Object.freeze({
@@ -74,6 +78,65 @@ export const DEFAULT_SORT = Object.freeze({
   field: SORT_FIELDS.CREATED,
   direction: SORT_DIRECTIONS.DESC,
 })
+
+/** Options shown in the My Tasks filter controls. */
+export const STATUS_FILTER_OPTIONS = Object.freeze([
+  Object.freeze({ value: STATUS_FILTERS.ALL, label: 'All' }),
+  Object.freeze({ value: STATUS_FILTERS.ACTIVE, label: 'Active' }),
+  Object.freeze({ value: STATUS_FILTERS.COMPLETED, label: 'Completed' }),
+])
+
+export const DUE_FILTER_OPTIONS = Object.freeze([
+  Object.freeze({ value: DUE_FILTERS.ALL, label: 'Any due date' }),
+  Object.freeze({ value: DUE_FILTERS.OVERDUE, label: 'Overdue' }),
+  Object.freeze({ value: DUE_FILTERS.TODAY, label: 'Due today' }),
+  Object.freeze({ value: DUE_FILTERS.SOON, label: `Due soon (next ${DUE_SOON_DAYS} days)` }),
+  Object.freeze({ value: DUE_FILTERS.NONE, label: 'No due date' }),
+])
+
+/**
+ * Sort choices for the My Tasks list. Each field has a natural default
+ * direction (used when the field is picked) and direction labels that say
+ * what the order means for that field.
+ */
+export const SORT_OPTIONS = Object.freeze([
+  Object.freeze({
+    value: SORT_FIELDS.CREATED,
+    label: 'Date created',
+    defaultDirection: SORT_DIRECTIONS.DESC,
+    directionLabels: Object.freeze({ asc: 'Oldest first', desc: 'Newest first' }),
+  }),
+  Object.freeze({
+    value: SORT_FIELDS.DUE_DATE,
+    label: 'Due date',
+    defaultDirection: SORT_DIRECTIONS.ASC,
+    directionLabels: Object.freeze({ asc: 'Earliest first', desc: 'Latest first' }),
+  }),
+  Object.freeze({
+    value: SORT_FIELDS.PRIORITY,
+    label: 'Priority',
+    defaultDirection: SORT_DIRECTIONS.DESC,
+    directionLabels: Object.freeze({ asc: 'Lowest first', desc: 'Highest first' }),
+  }),
+  Object.freeze({
+    value: SORT_FIELDS.TITLE,
+    label: 'Title',
+    defaultDirection: SORT_DIRECTIONS.ASC,
+    directionLabels: Object.freeze({ asc: 'A to Z', desc: 'Z to A' }),
+  }),
+  Object.freeze({
+    value: SORT_FIELDS.STATUS,
+    label: 'Status',
+    defaultDirection: SORT_DIRECTIONS.ASC,
+    directionLabels: Object.freeze({ asc: 'Active first', desc: 'Completed first' }),
+  }),
+  Object.freeze({
+    value: SORT_FIELDS.UPDATED,
+    label: 'Last updated',
+    defaultDirection: SORT_DIRECTIONS.DESC,
+    directionLabels: Object.freeze({ asc: 'Least recent first', desc: 'Most recent first' }),
+  }),
+])
 
 export const THEMES = Object.freeze({
   SYSTEM: 'system',
