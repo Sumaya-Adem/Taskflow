@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { PRIORITIES } from '../config/constants.js'
 import { buildTask } from '../test/fixtures.js'
-import { completionPercentage, computeStats } from './stats.js'
+import { completionPercentage, computeStats, sharePercentage } from './stats.js'
 
 const NOW = new Date(2026, 9, 8, 12) // local 2026-10-08 noon
 
@@ -91,5 +91,24 @@ describe('computeStats', () => {
     const snapshot = structuredClone(tasks)
     computeStats(tasks, { now: NOW })
     expect(tasks).toEqual(snapshot)
+  })
+})
+
+describe('sharePercentage', () => {
+  it('is 0 when there is nothing to divide', () => {
+    expect(sharePercentage(0, 0)).toBe(0)
+    expect(sharePercentage(3, 0)).toBe(0)
+    expect(sharePercentage(0, 5)).toBe(0)
+  })
+
+  it('rounds normally', () => {
+    expect(sharePercentage(1, 3)).toBe(33)
+    expect(sharePercentage(2, 3)).toBe(67)
+    expect(sharePercentage(5, 5)).toBe(100)
+  })
+
+  it('guards against invalid input and parts larger than the total', () => {
+    expect(sharePercentage(NaN, 4)).toBe(0)
+    expect(sharePercentage(9, 4)).toBe(100)
   })
 })

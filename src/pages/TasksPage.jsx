@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { PageHeader } from '../components/layout/PageHeader.jsx'
 import { TaskFormDialog } from '../components/tasks/TaskFormDialog.jsx'
 import { TaskList } from '../components/tasks/TaskList.jsx'
@@ -8,6 +8,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog.jsx'
 import { EmptyState } from '../components/ui/EmptyState.jsx'
 import { Icon } from '../components/ui/Icon.jsx'
 import { Toast } from '../components/ui/Toast.jsx'
+import { useToast } from '../components/ui/useToast.js'
 import { DEFAULT_FILTERS, DEFAULT_SORT } from '../config/constants.js'
 import { getTodayKey, parseDateKey } from '../domain/dates.js'
 import { hasActiveCriteria, selectVisibleTasks } from '../domain/selectors.js'
@@ -28,8 +29,7 @@ export function TasksPage({ route }) {
   const [view, dispatchView] = useReducer(taskViewReducer, initialTaskView)
   // { type: DIALOG.*, task?: Task }. The task is a snapshot taken when the dialog opened.
   const [dialog, setDialog] = useState(null)
-  const [toast, setToast] = useState(null)
-  const toastIdRef = useRef(0)
+  const { toast, notify, dismissToast } = useToast()
   const listHeadingRef = useRef(null)
   const focusListAfterRenderRef = useRef(false)
 
@@ -53,11 +53,6 @@ export function TasksPage({ route }) {
 
   const isInView = (task) => selectVisibleTasks([task], view, { now }).length > 0
 
-  const notify = useCallback((message, tone = 'success') => {
-    toastIdRef.current += 1
-    setToast({ id: toastIdRef.current, message, tone })
-  }, [])
-  const dismissToast = useCallback(() => setToast(null), [])
   const closeDialog = () => setDialog(null)
   const openCreateDialog = () => setDialog({ type: DIALOG.CREATE })
 

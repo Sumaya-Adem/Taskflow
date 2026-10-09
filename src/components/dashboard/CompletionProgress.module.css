@@ -1,0 +1,32 @@
+.figure {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.percentage {
+  font-size: 3rem;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.detail {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* Meter: accent fill on a lighter step of the same hue. */
+.track {
+  height: 0.75rem;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--color-chart-track);
+}
+
+.fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--color-chart-accent);
+  transition: width 240ms var(--easing-standard);
+}

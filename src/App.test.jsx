@@ -110,7 +110,10 @@ describe('pages', () => {
     const { user } = renderApp({
       entries: tasksEntry([buildTask({ id: 'a' }), buildTask({ id: 'b', completed: true, completedAt: '2026-10-02T00:00:00.000Z' })]),
     })
-    expect(screen.getByText('You have 2 tasks: 1 active and 1 completed.')).toBeInTheDocument()
+    const summary = screen.getByRole('region', { name: 'Task summary' })
+    expect(within(summary).getByText('Total tasks').nextElementSibling).toHaveTextContent('2')
+    expect(within(summary).getByText('Active').nextElementSibling).toHaveTextContent('1')
+    expect(within(summary).getByText('Completed').nextElementSibling).toHaveTextContent('1')
     await user.click(navLink('My Tasks'))
     expect(screen.getAllByRole('checkbox')).toHaveLength(2)
     expect(screen.getByText('1 active · 1 completed')).toBeInTheDocument()
@@ -152,8 +155,7 @@ describe('theme', () => {
 describe('storage notices', () => {
   it('explains recovery from corrupted data and can be dismissed', async () => {
     const { user } = renderApp({ entries: { [STORAGE_KEYS.TASKS]: '{broken' } })
-    const notice = screen.getByRole('status')
-    expect(notice).toHaveTextContent('Saved data could not be read')
+    const notice = screen.getByRole('status', { name: 'Saved data could not be read' })
     expect(notice).toHaveTextContent('taskflow:tasks:backup:')
 
     await user.click(within(notice).getByRole('button', { name: 'Dismiss notification' }))
@@ -168,7 +170,9 @@ describe('storage notices', () => {
 
   it('shows no notice when storage is healthy', () => {
     renderApp()
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    // The toast live region is always present (empty) so announcements work; no region may hold a message.
+    const messages = screen.queryAllByRole('status').filter((region) => region.textContent.trim() !== '')
+    expect(messages).toEqual([])
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

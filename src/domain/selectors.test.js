@@ -6,6 +6,9 @@ import {
   hasActiveCriteria,
   resolveSort,
   searchTasks,
+  selectOverdueTasks,
+  selectUndatedActiveTasks,
+  selectUpcomingTasks,
   selectVisibleTasks,
   sortTasks,
   toSearchTerms,
@@ -320,5 +323,66 @@ describe('Phase 4 additions', () => {
     ]
     expect(ids(sortTasks(tasks, { field: 'dueDate', direction: 'asc' }))).toEqual(['y', 'x', 'none-2', 'none-1'])
     expect(ids(sortTasks(tasks, { field: 'dueDate', direction: 'desc' }))).toEqual(['x', 'y', 'none-2', 'none-1'])
+  })
+})
+
+describe('dashboard deadline selectors (Phase 5)', () => {
+  // NOW is local 2026-10-08 noon (see top of file).
+  const tasks = [
+    buildTask({ id: 'late-1', dueDate: '2026-10-01', createdAt: '2026-09-01T00:00:00.000Z' }),
+    buildTask({ id: 'late-2', dueDate: '2026-10-07', createdAt: '2026-09-02T00:00:00.000Z' }),
+    buildTask({ id: 'late-done', dueDate: '2026-10-02', completed: true }),
+    buildTask({ id: 'today', dueDate: '2026-10-08' }),
+    buildTask({ id: 'tomorrow', dueDate: '2026-10-09' }),
+    buildTask({ id: 'far', dueDate: '2027-01-15' }),
+    buildTask({ id: 'future-done', dueDate: '2026-10-10', completed: true }),
+    buildTask({ id: 'undated', dueDate: null }),
+    buildTask({ id: 'undated-done', dueDate: null, completed: true }),
+  ]
+
+  it('selectOverdueTasks returns active past-due tasks, most overdue first', () => {
+    expect(ids(selectOverdueTasks(tasks, { now: NOW }))).toEqual(['late-1', 'late-2'])
+  })
+
+  it('selectUpcomingTasks returns active tasks due today or later, soonest first', () => {
+    expect(ids(selectUpcomingTasks(tasks, { now: NOW }))).toEqual(['today', 'tomorrow', 'far'])
+  })
+
+  it('never lists a task in both sections, and excludes undated and completed tasks', () => {
+    const overdue = ids(selectOverdueTasks(tasks, { now: NOW }))
+    const upcoming = ids(selectUpcomingTasks(tasks, { now: NOW }))
+    expect(overdue.filter((id) => upcoming.includes(id))).toEqual([])
+    for (const excluded of ['late-done', 'future-done', 'undated', 'undated-done']) {
+      expect([...overdue, ...upcoming]).not.toContain(excluded)
+    }
+  })
+
+  it('moves a task from upcoming to overdue exactly at local midnight', () => {
+    const task = [buildTask({ id: 'x', dueDate: '2026-10-08' })]
+    const lastMoment = new Date(2026, 9, 8, 23, 59, 59, 999)
+    const nextDay = new Date(2026, 9, 9, 0, 0, 0, 0)
+    expect(ids(selectUpcomingTasks(task, { now: lastMoment }))).toEqual(['x'])
+    expect(ids(selectOverdueTasks(task, { now: lastMoment }))).toEqual([])
+    expect(ids(selectOverdueTasks(task, { now: nextDay }))).toEqual(['x'])
+  })
+
+  it('breaks due-date ties deterministically (newest first)', () => {
+    const same = [
+      buildTask({ id: 'older', dueDate: '2026-10-20', createdAt: '2026-10-01T00:00:00.000Z' }),
+      buildTask({ id: 'newer', dueDate: '2026-10-20', createdAt: '2026-10-02T00:00:00.000Z' }),
+    ]
+    expect(ids(selectUpcomingTasks(same, { now: NOW }))).toEqual(['newer', 'older'])
+  })
+
+  it('selectUndatedActiveTasks returns active tasks without a due date', () => {
+    expect(ids(selectUndatedActiveTasks(tasks))).toEqual(['undated'])
+  })
+
+  it('handle empty lists and never mutate the input', () => {
+    expect(selectOverdueTasks([], { now: NOW })).toEqual([])
+    expect(selectUpcomingTasks([], { now: NOW })).toEqual([])
+    const copy = [...tasks]
+    selectUpcomingTasks(tasks, { now: NOW })
+    expect(tasks).toEqual(copy)
   })
 })
