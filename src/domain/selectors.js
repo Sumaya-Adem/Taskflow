@@ -155,3 +155,30 @@ export function sortTasks(tasks, sort = DEFAULT_SORT) {
 export function selectVisibleTasks(tasks, { query = '', filters, sort } = {}, { now = new Date() } = {}) {
   return sortTasks(filterTasks(searchTasks(tasks, query), filters, { now }), sort)
 }
+
+const BY_DUE_DATE = Object.freeze({ field: SORT_FIELDS.DUE_DATE, direction: SORT_DIRECTIONS.ASC })
+
+/**
+ * Active tasks whose due date has passed, most overdue first. Completed tasks
+ * are never overdue (see getDueStatus).
+ */
+export function selectOverdueTasks(tasks, { now = new Date() } = {}) {
+  const overdue = filterTasks(tasks, { status: STATUS_FILTERS.ACTIVE, due: DUE_FILTERS.OVERDUE }, { now })
+  return sortTasks(overdue, BY_DUE_DATE)
+}
+
+/**
+ * Active tasks due today or later, soonest first. Disjoint from
+ * selectOverdueTasks; tasks without a due date are excluded.
+ */
+export function selectUpcomingTasks(tasks, { now = new Date() } = {}) {
+  const active = { status: STATUS_FILTERS.ACTIVE }
+  const dueToday = filterTasks(tasks, { ...active, due: DUE_FILTERS.TODAY }, { now })
+  const dueLater = filterTasks(tasks, { ...active, due: DUE_FILTERS.UPCOMING }, { now })
+  return sortTasks([...dueToday, ...dueLater], BY_DUE_DATE)
+}
+
+/** Active tasks with no due date. */
+export function selectUndatedActiveTasks(tasks) {
+  return filterTasks(tasks, { status: STATUS_FILTERS.ACTIVE, due: DUE_FILTERS.NONE })
+}

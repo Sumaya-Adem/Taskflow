@@ -1,0 +1,19 @@
+.twoColumns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+@media (max-width: 1023px) {
+  .twoColumns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

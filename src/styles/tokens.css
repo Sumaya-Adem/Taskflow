@@ -34,6 +34,12 @@
   --color-danger: light-dark(#c62828, #f87171);
   --color-danger-soft: light-dark(#fff1f1, #3d1a1d);
 
+  /* Data visualization: one accent hue for single-series marks (meters, bars)
+     and a lighter step of the same hue for tracks. Validated for lightness,
+     chroma and >=3:1 contrast against the surface in each mode. */
+  --color-chart-accent: light-dark(#4f46e5, #7c83f5);
+  --color-chart-track: light-dark(#e6e8fc, #262a4a);
+
   --focus-ring: 0 0 0 3px light-dark(rgb(79 70 229 / 0.4), rgb(139 147 255 / 0.5));
 
   /* Typography */

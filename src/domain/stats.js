@@ -17,6 +17,12 @@ export function completionPercentage(completed, total) {
   return Math.min(Math.max(percentage, 1), 99)
 }
 
+/** `part` as a whole percentage of `total` (normal rounding); 0 when there is nothing to divide. */
+export function sharePercentage(part, total) {
+  if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(part) || part <= 0) return 0
+  return Math.round((Math.min(part, total) / total) * 100)
+}
+
 /**
  * @returns {{
  *   total: number, active: number, completed: number,
