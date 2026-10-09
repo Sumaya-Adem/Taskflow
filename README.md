@@ -53,20 +53,37 @@ Then open the URL printed in the terminal (by default <http://localhost:5173>).
 ├── src/
 │   ├── main.jsx          # React entry point
 │   ├── App.jsx           # Root component
+│   ├── config/           # App configuration: priorities, categories, limits, sort/filter options
+│   ├── domain/           # Pure logic: task model, dates, search/filter/sort, statistics
+│   ├── storage/          # localStorage adapter (the only module that touches browser storage)
 │   ├── styles/           # Global styles and design tokens
-│   └── test/             # Test setup and shared test utilities
+│   └── test/             # Test setup, fixtures and an in-memory Storage mock
 ├── eslint.config.js      # ESLint flat config
 └── vite.config.js        # Vite + Vitest configuration
 ```
 
-The structure will grow to include `config/`, `domain/`, `storage/`, `state/`, and `components/` directories as features are implemented.
+The `state/` and `components/` directories are added in later phases. The `domain/` and `storage/` layers have no React dependencies, and unit tests sit next to the modules they cover.
+
+## Data storage
+
+Tasks are saved in `localStorage` under `taskflow:tasks` as a versioned envelope:
+
+```json
+{ "version": 1, "tasks": [ { "id": "…", "title": "…", "dueDate": "2026-10-08", "…": "…" } ] }
+```
+
+- Due dates are local calendar dates (`YYYY-MM-DD`), not timestamps, so they never shift across timezones.
+- Every load is validated. Malformed records are repaired where possible (for example, an unknown priority falls back to `medium`) or skipped.
+- If stored data is corrupted or had to be repaired, the original is first copied to `taskflow:tasks:backup:<timestamp>` so it is never silently lost.
+- Data written by a newer, unsupported schema version is left untouched, and saving is disabled for that session.
+- Statistics are always computed from the task list and never stored.
 
 ## Roadmap
 
 | Phase | Scope | Status |
 | --- | --- | --- |
 | 0 | Project scaffold and tooling | ✅ Done |
-| 1 | Domain model, validation, and storage layer | Planned |
+| 1 | Domain model, validation, and storage layer | ✅ Done |
 | 2 | State management, theming, and app shell | Planned |
 | 3 | Task create / edit / delete / complete | Planned |
 | 4 | Search, filtering, and sorting | Planned |
