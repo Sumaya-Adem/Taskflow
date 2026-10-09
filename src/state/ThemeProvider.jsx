@@ -17,6 +17,12 @@ export function ThemeProvider({ preferenceStorage, initialPreferences, children 
     applyTheme(theme)
   }, [theme])
 
+  // Follow theme changes made in another tab (reading only; never re-saved here).
+  useEffect(
+    () => preferenceStorage.subscribe?.(() => setThemeState(preferenceStorage.loadPreferences().preferences.theme)),
+    [preferenceStorage],
+  )
+
   const setTheme = useCallback(
     (nextTheme) => {
       if (!isValidTheme(nextTheme)) return

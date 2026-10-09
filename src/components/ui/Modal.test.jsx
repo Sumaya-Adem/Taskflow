@@ -107,3 +107,14 @@ describe('ConfirmDialog', () => {
     expect(onConfirm).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('ConfirmDialog double activation (Phase 6)', () => {
+  it('confirms at most once', () => {
+    const onConfirm = vi.fn()
+    render(<ConfirmDialog title="Delete?" message="Sure?" confirmLabel="Delete" onConfirm={onConfirm} onCancel={() => {}} />)
+    const confirm = screen.getByRole('button', { name: 'Delete' })
+    fireEvent.click(confirm)
+    fireEvent.click(confirm)
+    expect(onConfirm).toHaveBeenCalledTimes(1)
+  })
+})

@@ -34,6 +34,10 @@
   color: light-dark(#4ade80, #15803d);
 }
 
+.warning .icon {
+  color: light-dark(#fbbf24, #a15c07);
+}
+
 .error .icon {
   color: light-dark(#f87171, #c62828);
 }

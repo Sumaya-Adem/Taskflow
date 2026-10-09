@@ -4,7 +4,7 @@ import { Panel } from '../ui/Panel.jsx'
 import { getDueBadge, getPriorityBadge } from '../tasks/taskPresentation.js'
 import styles from './DeadlineList.module.css'
 
-export const DEADLINE_LIST_LIMIT = 5
+const DEADLINE_LIST_LIMIT = 5
 
 /**
  * A short list of tasks with deadlines (overdue or upcoming). Shows the first

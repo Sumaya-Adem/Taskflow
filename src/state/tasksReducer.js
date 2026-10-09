@@ -12,6 +12,7 @@
  *     backupKey: string | null,  // where damaged data was preserved
  *     droppedCount: number,      // records that could not be recovered
  *     saveError: SAVE_ERROR | null,
+ *     syncNotice: SYNC_NOTICE | null,  // an external change this tab did not accept
  *     noticeDismissed: boolean,
  *   },
  * }
@@ -20,8 +21,18 @@
 import { TaskValidationError, toggleTaskCompleted, updateTask } from '../domain/task.js'
 import { LOAD_STATUS } from '../storage/storage.js'
 
+/** Why an external (other-tab) change was not applied as-is. */
+export const SYNC_NOTICE = Object.freeze({
+  /** Another tab removed the stored tasks; this tab kept its copy. */
+  REMOVED: 'removed',
+  /** Another tab wrote unreadable data; this tab restored its copy (after a backup). */
+  RESTORED: 'restored',
+})
+
 export const TASK_ACTIONS = Object.freeze({
   LOADED: 'tasks/loaded',
+  /** An external change was rejected; tasks stay as they are and `patch` updates persistence. */
+  EXTERNAL_CHANGE_REJECTED: 'tasks/externalChangeRejected',
   ADDED: 'tasks/added',
   UPDATED: 'tasks/updated',
   COMPLETION_TOGGLED: 'tasks/completionToggled',
@@ -39,11 +50,12 @@ export const initialTasksState = Object.freeze({
     backupKey: null,
     droppedCount: 0,
     saveError: null,
+    syncNotice: null,
     noticeDismissed: false,
   }),
 })
 
-/** Builds state from a `taskStorage.loadTasks()` result. */
+/** Builds state from a `taskStorage.loadTasks()` result (optionally with `saveError` from a write-back). */
 export function createTasksState(loadResult) {
   return tasksReducer(initialTasksState, { type: TASK_ACTIONS.LOADED, result: loadResult })
 }
@@ -80,11 +92,15 @@ export function tasksReducer(state, action) {
           writable: result.writable,
           backupKey: result.backupKey ?? null,
           droppedCount: result.droppedCount ?? 0,
-          saveError: null,
+          saveError: result.saveError ?? null,
+          syncNotice: null,
           noticeDismissed: false,
         },
       }
     }
+
+    case TASK_ACTIONS.EXTERNAL_CHANGE_REJECTED:
+      return { ...state, persistence: { ...state.persistence, ...action.patch, noticeDismissed: false } }
 
     case TASK_ACTIONS.ADDED: {
       if (state.tasks.some((task) => task.id === action.task.id)) return state
@@ -102,9 +118,12 @@ export function tasksReducer(state, action) {
       return tasks.length === state.tasks.length ? state : { ...state, tasks }
     }
 
-    case TASK_ACTIONS.SAVE_SUCCEEDED:
-      if (state.persistence.saveError === null) return state
-      return { ...state, persistence: { ...state.persistence, saveError: null } }
+    case TASK_ACTIONS.SAVE_SUCCEEDED: {
+      // A successful save also resolves "removed in another tab": the tasks are stored again.
+      const syncNotice = state.persistence.syncNotice === SYNC_NOTICE.REMOVED ? null : state.persistence.syncNotice
+      if (state.persistence.saveError === null && syncNotice === state.persistence.syncNotice) return state
+      return { ...state, persistence: { ...state.persistence, saveError: null, syncNotice } }
+    }
 
     case TASK_ACTIONS.SAVE_FAILED:
       return {

@@ -2,7 +2,7 @@
 
 TaskFlow is a clean, fast, responsive task management application for organising daily work and personal tasks. It runs entirely in the browser and persists data to `localStorage` — no backend, no account required.
 
-> **Status:** in development. Task management, search/filter/sort and the statistics dashboard are complete; final polish and release documentation are next (see [Roadmap](#roadmap)).
+> **Status:** feature-complete. Release documentation is the remaining phase (see [Roadmap](#roadmap)).
 
 ## Tech stack
 
@@ -76,11 +76,12 @@ The `domain/` and `storage/` layers have no React dependencies, and unit tests s
 ## Architecture overview
 
 - **State:** `TasksProvider` (React Context + `useReducer`) holds the task list and persistence status. Components use `useTasks()`, whose actions (`addTask`, `updateTask`, `toggleTaskCompleted`, `deleteTask`) validate input with the domain model and return `{ ok, errors }` results instead of throwing.
-- **Persistence:** storage is read once at startup (`createAppServices`). Every task change is saved automatically; failures are shown as dismissible notices and the app keeps working in memory. Changes made in another tab are picked up automatically.
+- **Persistence:** storage is read once at startup (`createAppServices`), and recovered data is written back once. Every task action writes through to storage synchronously and reports whether it was saved (`{ ok, saved }`), so the UI never shows a failed save as a success: an unsaved change gets a warning message and the storage notice explains what to do. The app keeps working in memory when storage fails.
 - **Navigation:** a small hash-based router (`#/dashboard`, `#/tasks`, `#/settings`) built on `useSyncExternalStore`. It needs no server configuration and supports deep links and the back button.
 - **Task management:** the My Tasks page lists tasks (newest first) and opens a native `<dialog>` for creating and editing. Forms keep only their own field values; validation and normalization come from the domain layer through the `useTasks()` actions, and errors are shown next to each field. Deleting asks for confirmation in an alert dialog that focuses Cancel first. Feedback appears in a toast announced to screen readers.
 - **Search, filters and sorting:** the My Tasks toolbar keeps its settings (query, filters, sort) in a small view reducer in component state. The visible list is derived on each render by the domain pipeline `selectVisibleTasks` (search → filter → sort); view settings are never saved and never change stored tasks. Non-default settings are listed as removable chips, with "Reset all" to return to the defaults.
 - **Dashboard:** summary cards, completion progress, a priority breakdown and overdue/upcoming lists, all derived on render from the live task state through domain functions (`computeStats`, `sharePercentage`, `selectOverdueTasks`, `selectUpcomingTasks`). Nothing derived is stored. Creating and editing from the dashboard reuse the same task dialog and `useTasks()` actions as My Tasks.
+- **Cross-tab sync:** tabs listen for the browser's `storage` event and reload through the same validating parser. Storage is the shared source of truth and the last write wins. External data is never allowed to silently wipe this tab's tasks: if another tab clears storage, this tab keeps its tasks (and saves them on the next change); if another tab writes unreadable data, it is backed up and this tab's tasks are restored; if a newer app version writes data, this tab stops saving and keeps its tasks in memory. The theme preference syncs too.
 - **Theming:** System, Light or Dark, chosen in Settings or toggled from the header. Colors are CSS custom properties defined with `light-dark()`, and a tiny inline script in `index.html` applies a saved choice before first paint.
 
 ## Features
@@ -94,6 +95,20 @@ The `domain/` and `storage/` layers have no React dependencies, and unit tests s
 - Accessible forms (labels, required markers, character counters, inline errors) and keyboard-friendly dialogs
 - Light, dark and system themes; responsive layout with a sidebar on desktop and a tab bar on mobile
 - Automatic saving in the browser, with clear notices if storage is unavailable, full or corrupted
+
+## Accessibility
+
+- Semantic landmarks, one `h1` per page and no skipped heading levels; a skip link; focus moves to the page heading after navigation
+- Every control has an accessible name; form errors are linked to their fields; status (overdue, priority, completion) is always spelled out in text, never color alone
+- Native `<dialog>` modals with focus containment, Escape to close and focus restoration; delete confirmation focuses Cancel first
+- Text meets WCAG AA contrast and form-control borders meet 3:1 in both themes; interactive targets are at least 24×24 px (most 40–44 px)
+- Animations and transitions are disabled when the system asks for reduced motion
+
+## Known limitations
+
+- **Simultaneous edits in two tabs:** the last write wins. If two tabs change tasks at nearly the same moment, before either has received the other's update, the earlier change can be overwritten. Saving a task from an edit dialog writes the dialog's values even if another tab changed that task while the dialog was open.
+- Search, filter and sort settings reset when you leave the My Tasks page.
+- Due-date states (overdue, due today) are recalculated when tasks change or the page reloads, not automatically at midnight.
 
 ## Data storage
 
@@ -120,5 +135,5 @@ Tasks are saved in `localStorage` under `taskflow:tasks` as a versioned envelope
 | 3 | Task create / edit / delete / complete | ✅ Done |
 | 4 | Search, filtering, and sorting | ✅ Done |
 | 5 | Statistics dashboard | ✅ Done |
-| 6 | Responsive, accessibility, and robustness polish | Planned |
+| 6 | Responsive, accessibility, and robustness polish | ✅ Done |
 | 7 | Documentation and release | Planned |

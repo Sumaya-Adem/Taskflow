@@ -104,7 +104,7 @@
   display: flex;
   min-height: 2.75rem;
   padding: 3px;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-input);
   border-radius: var(--radius-md);
   background: var(--color-surface-muted);
 }

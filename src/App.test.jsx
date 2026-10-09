@@ -156,7 +156,8 @@ describe('storage notices', () => {
   it('explains recovery from corrupted data and can be dismissed', async () => {
     const { user } = renderApp({ entries: { [STORAGE_KEYS.TASKS]: '{broken' } })
     const notice = screen.getByRole('status', { name: 'Saved data could not be read' })
-    expect(notice).toHaveTextContent('taskflow:tasks:backup:')
+    expect(notice).toHaveTextContent('A backup of the original data was kept in this browser.')
+    expect(notice).not.toHaveTextContent('taskflow:')
 
     await user.click(within(notice).getByRole('button', { name: 'Dismiss notification' }))
     expect(screen.queryByText('Saved data could not be read')).not.toBeInTheDocument()

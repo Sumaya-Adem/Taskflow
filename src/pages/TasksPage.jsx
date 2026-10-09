@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button.jsx'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog.jsx'
 import { EmptyState } from '../components/ui/EmptyState.jsx'
 import { Icon } from '../components/ui/Icon.jsx'
+import { describeOutcome } from '../components/tasks/taskFeedback.js'
 import { Toast } from '../components/ui/Toast.jsx'
 import { useToast } from '../components/ui/useToast.js'
 import { DEFAULT_FILTERS, DEFAULT_SORT } from '../config/constants.js'
@@ -29,7 +30,7 @@ export function TasksPage({ route }) {
   const [view, dispatchView] = useReducer(taskViewReducer, initialTaskView)
   // { type: DIALOG.*, task?: Task }. The task is a snapshot taken when the dialog opened.
   const [dialog, setDialog] = useState(null)
-  const { toast, notify, dismissToast } = useToast()
+  const { toast, notify, notifyOutcome, dismissToast } = useToast()
   const listHeadingRef = useRef(null)
   const focusListAfterRenderRef = useRef(false)
 
@@ -61,7 +62,7 @@ export function TasksPage({ route }) {
     if (result.ok) {
       closeDialog()
       const note = isInView(result.task) ? '' : HIDDEN_BY_VIEW_NOTE
-      notify(`Task "${result.task.title}" created.${note}`)
+      notifyOutcome(describeOutcome(`Task "${result.task.title}" created.${note}`, result.saved))
     }
     return result
   }
@@ -71,7 +72,8 @@ export function TasksPage({ route }) {
     if (result.ok) {
       closeDialog()
       const updated = { ...dialog.task, ...validateTaskInput(values).values }
-      notify(`Changes saved.${isInView(updated) ? '' : HIDDEN_BY_VIEW_NOTE}`)
+      const note = isInView(updated) ? '' : HIDDEN_BY_VIEW_NOTE
+      notifyOutcome(describeOutcome(result.saved ? `Changes saved.${note}` : `Task updated.${note}`, result.saved))
     }
     return result
   }
@@ -83,14 +85,14 @@ export function TasksPage({ route }) {
       return
     }
     if (!isInView({ ...task, completed: !task.completed })) focusListAfterRenderRef.current = true
-    notify(task.completed ? `"${task.title}" reopened.` : `"${task.title}" completed.`)
+    notifyOutcome(describeOutcome(task.completed ? `"${task.title}" reopened.` : `"${task.title}" completed.`, result.saved))
   }
 
   const handleConfirmDelete = () => {
     const { task } = dialog
     const result = deleteTask(task.id)
     closeDialog()
-    if (result.ok) notify(`Task "${task.title}" deleted.`)
+    if (result.ok) notifyOutcome(describeOutcome(`Task "${task.title}" deleted.`, result.saved))
     else notify(result.errors.form, 'error')
   }
 

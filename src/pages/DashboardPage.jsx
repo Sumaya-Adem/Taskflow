@@ -8,6 +8,7 @@ import { TaskFormDialog } from '../components/tasks/TaskFormDialog.jsx'
 import { Button } from '../components/ui/Button.jsx'
 import { EmptyState } from '../components/ui/EmptyState.jsx'
 import { Icon } from '../components/ui/Icon.jsx'
+import { describeOutcome } from '../components/tasks/taskFeedback.js'
 import { Toast } from '../components/ui/Toast.jsx'
 import { useToast } from '../components/ui/useToast.js'
 import { getTodayKey, parseDateKey } from '../domain/dates.js'
@@ -28,7 +29,7 @@ const TASKS_HREF = getRouteHref(ROUTES.find((route) => route.id === 'tasks'))
 export function DashboardPage({ route }) {
   const { tasks, addTask, updateTask } = useTasks()
   const [dialog, setDialog] = useState(null) // { task?: Task } while the form is open
-  const { toast, notify, dismissToast } = useToast()
+  const { toast, notifyOutcome, dismissToast } = useToast()
 
   // Date-dependent values only change with the calendar day, so derive them
   // from local midnight and recompute when the day (or the tasks) change.
@@ -51,7 +52,8 @@ export function DashboardPage({ route }) {
     const result = dialog.task ? updateTask(dialog.task.id, values) : addTask(values)
     if (result.ok) {
       closeDialog()
-      notify(dialog.task ? 'Changes saved.' : `Task "${result.task.title}" created.`)
+      const message = dialog.task ? (result.saved ? 'Changes saved.' : 'Task updated.') : `Task "${result.task.title}" created.`
+      notifyOutcome(describeOutcome(message, result.saved))
     }
     return result
   }

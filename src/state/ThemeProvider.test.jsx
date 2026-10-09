@@ -14,7 +14,7 @@ function setup({ theme = 'system', prefersDark = false } = {}) {
   const media = createMatchMediaStub(prefersDark)
   vi.stubGlobal('matchMedia', media.matchMedia)
   const backend = createMemoryStorage()
-  const preferenceStorage = createPreferenceStorage(backend)
+  const preferenceStorage = createPreferenceStorage(backend, { eventTarget: window })
   const wrapper = ({ children }) => (
     <ThemeProvider preferenceStorage={preferenceStorage} initialPreferences={{ theme }}>
       {children}
@@ -95,5 +95,37 @@ describe('theme helpers', () => {
   it('index.html pre-paint script reads the same preferences key', () => {
     const html = readFileSync(resolve(process.cwd(), 'index.html'), 'utf8')
     expect(html).toContain(`localStorage.getItem('${STORAGE_KEYS.PREFERENCES}')`)
+  })
+})
+
+describe('cross-tab theme sync (Phase 6)', () => {
+  it('follows a theme change made in another tab without re-saving it', () => {
+    const { result, backend } = setup({ theme: 'light' })
+    backend.setItem(STORAGE_KEYS.PREFERENCES, JSON.stringify({ theme: 'dark' }))
+    const setItem = vi.spyOn(backend, 'setItem')
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEYS.PREFERENCES }))
+    })
+    expect(result.current.theme).toBe('dark')
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(setItem).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the default theme for invalid external data', () => {
+    const { result, backend } = setup({ theme: 'dark' })
+    backend.setItem(STORAGE_KEYS.PREFERENCES, '{oops')
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEYS.PREFERENCES }))
+    })
+    expect(result.current.theme).toBe('system')
+  })
+
+  it('ignores task-storage events', () => {
+    const { result, backend } = setup({ theme: 'dark' })
+    backend.setItem(STORAGE_KEYS.PREFERENCES, JSON.stringify({ theme: 'light' }))
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEYS.TASKS }))
+    })
+    expect(result.current.theme).toBe('dark')
   })
 })
