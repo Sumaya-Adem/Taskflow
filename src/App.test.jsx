@@ -112,7 +112,8 @@ describe('pages', () => {
     })
     expect(screen.getByText('You have 2 tasks: 1 active and 1 completed.')).toBeInTheDocument()
     await user.click(navLink('My Tasks'))
-    expect(screen.getByText('2 tasks are saved in this browser.')).toBeInTheDocument()
+    expect(screen.getAllByRole('checkbox')).toHaveLength(2)
+    expect(screen.getByText('1 active · 1 completed')).toBeInTheDocument()
   })
 
   it('shows storage status and task count in Settings', () => {
