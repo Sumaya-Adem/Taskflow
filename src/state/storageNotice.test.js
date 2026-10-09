@@ -34,10 +34,11 @@ describe('getStorageNotice', () => {
     expect(notice.message).toMatch(/Saving is paused/)
   })
 
-  it('names the backup when corrupt data was preserved', () => {
+  it('mentions the backup in plain language, without exposing storage keys', () => {
     const notice = getStorageNotice(persistence({ loadStatus: LOAD_STATUS.CORRUPT, backupKey: 'taskflow:tasks:backup:x' }))
     expect(notice.tone).toBe(NOTICE_TONES.WARNING)
-    expect(notice.message).toContain('taskflow:tasks:backup:x')
+    expect(notice.message).toContain('A backup of the original data was kept in this browser.')
+    expect(notice.message).not.toContain('taskflow:')
   })
 
   it('reports an error when corrupt data could not be backed up', () => {
@@ -80,5 +81,39 @@ describe('getStorageNotice', () => {
   it('shows nothing once dismissed or without input', () => {
     expect(getStorageNotice(persistence({ saveError: SAVE_ERROR.WRITE_FAILED, noticeDismissed: true }))).toBeNull()
     expect(getStorageNotice(undefined)).toBeNull()
+  })
+})
+
+describe('Phase 6: sync notices and wording', () => {
+  it('explains tasks cleared in another tab', () => {
+    const notice = getStorageNotice(persistence({ syncNotice: 'removed' }))
+    expect(notice).toMatchObject({ tone: NOTICE_TONES.WARNING, title: 'Tasks were cleared in another tab' })
+    expect(notice.message).toMatch(/still shown here/)
+  })
+
+  it('explains data restored after damage in another tab', () => {
+    const notice = getStorageNotice(persistence({ syncNotice: 'restored', backupKey: 'taskflow:tasks:backup:y' }))
+    expect(notice.title).toBe('Saved data was damaged in another tab')
+    expect(notice.message).not.toContain('taskflow:')
+  })
+
+  it('puts save errors before sync notices, and sync notices before load notices', () => {
+    expect(getStorageNotice(persistence({ syncNotice: 'removed', saveError: SAVE_ERROR.WRITE_FAILED })).title).toBe('Changes not saved')
+    expect(getStorageNotice(persistence({ loadStatus: LOAD_STATUS.CORRUPT, syncNotice: 'restored' })).title).toBe(
+      'Saved data was damaged in another tab',
+    )
+  })
+
+  it('tells the user what to do next in every notice', () => {
+    const cases = [
+      persistence({ loadStatus: LOAD_STATUS.UNAVAILABLE, writable: false }),
+      persistence({ loadStatus: LOAD_STATUS.UNSUPPORTED_VERSION, writable: false }),
+      persistence({ loadStatus: LOAD_STATUS.CORRUPT, writable: false }),
+      persistence({ saveError: SAVE_ERROR.QUOTA_EXCEEDED }),
+      persistence({ syncNotice: 'removed' }),
+    ]
+    for (const state of cases) {
+      expect(getStorageNotice(state).message).toMatch(/reload|free up|check|make a change|lost when/i)
+    }
   })
 })

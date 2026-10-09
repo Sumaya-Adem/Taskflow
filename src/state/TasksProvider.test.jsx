@@ -5,6 +5,7 @@ import { BACKUP_KEY_PREFIX, LOAD_STATUS, SAVE_ERROR, createTaskStorage } from '.
 import { buildTask } from '../test/fixtures.js'
 import { createMemoryStorage, createQuotaError } from '../test/memoryStorage.js'
 import { TASK_NOT_FOUND_ERROR, TasksProvider } from './TasksProvider.jsx'
+import { writeBackRecoveredTasks } from './services.js'
 import { useTasks } from './useTasks.js'
 
 const KEY = STORAGE_KEYS.TASKS
@@ -16,7 +17,8 @@ const storedTasks = (backend) => JSON.parse(backend.getItem(KEY)).tasks
 /** Renders useTasks() inside a provider over in-memory storage. */
 function setup({ entries = {}, backend = createMemoryStorage(entries) } = {}) {
   const storage = createTaskStorage(backend, { clock, eventTarget: window })
-  const initialLoad = storage.loadTasks()
+  // Same initial load the app performs in createAppServices (including write-back of recovered data).
+  const initialLoad = writeBackRecoveredTasks(storage, storage.loadTasks())
   const setItem = backend ? vi.spyOn(backend, 'setItem') : null
   const wrapper = ({ children }) => (
     <TasksProvider storage={storage} initialLoad={initialLoad} clock={clock}>
@@ -110,7 +112,7 @@ describe('actions', () => {
     act(() => {
       outcome = result.current.updateTask('a', { title: 'New', dueDate: '2026-10-20' })
     })
-    expect(outcome).toEqual({ ok: true })
+    expect(outcome).toEqual({ ok: true, saved: true })
     expect(result.current.tasks[0]).toMatchObject({ title: 'New', dueDate: '2026-10-20', updatedAt: NOW.toISOString() })
     expect(storedTasks(backend)[0].title).toBe('New')
   })
@@ -142,7 +144,7 @@ describe('actions', () => {
     act(() => {
       outcome = result.current.deleteTask('a')
     })
-    expect(outcome).toEqual({ ok: true })
+    expect(outcome).toEqual({ ok: true, saved: true })
     expect(result.current.tasks.map((task) => task.id)).toEqual(['b'])
     expect(storedTasks(backend).map((task) => task.id)).toEqual(['b'])
   })
@@ -231,12 +233,30 @@ describe('cross-tab sync', () => {
     expect(setItem).not.toHaveBeenCalled()
   })
 
-  it('reloads when storage is cleared in another tab', () => {
-    const { result, backend } = setup({ entries: { [KEY]: envelope([buildTask()]) } })
+  // Phase 6 policy: clearing storage elsewhere must not silently wipe the tasks open in this tab.
+  it('keeps its tasks when storage is cleared in another tab, and saves them again on the next change', () => {
+    const tasks = [buildTask({ id: 'a' })]
+    const { result, backend } = setup({ entries: { [KEY]: envelope(tasks) } })
+    backend.clear()
+    dispatchStorageEvent(null)
+
+    expect(result.current.tasks).toEqual(tasks)
+    expect(result.current.persistence.syncNotice).toBe('removed')
+    expect(backend.getItem(KEY)).toBeNull() // nothing is rewritten behind the user's back
+
+    act(() => {
+      result.current.addTask({ title: 'After clear' })
+    })
+    expect(storedTasks(backend).map((task) => task.title)).toEqual(['Write report', 'After clear'])
+    expect(result.current.persistence.syncNotice).toBeNull()
+  })
+
+  it('mirrors a cleared storage when this tab has no tasks either', () => {
+    const { result, backend } = setup({ entries: { [KEY]: envelope([]) } })
     backend.clear()
     dispatchStorageEvent(null)
     expect(result.current.tasks).toEqual([])
-    expect(result.current.persistence.loadStatus).toBe(LOAD_STATUS.EMPTY)
+    expect(result.current.persistence).toMatchObject({ loadStatus: LOAD_STATUS.EMPTY, syncNotice: null })
   })
 
   it('ignores changes to unrelated keys', () => {
@@ -253,5 +273,159 @@ describe('cross-tab sync', () => {
     unmount()
     dispatchStorageEvent()
     expect(loadTasks).not.toHaveBeenCalled()
+  })
+})
+
+describe('write-through persistence (Phase 6)', () => {
+  it('saves synchronously inside the action and reports it', () => {
+    const { result, backend } = setup()
+    let outcome
+    act(() => {
+      outcome = result.current.addTask({ title: 'Saved now' })
+      // Already in storage before React re-renders.
+      expect(storedTasks(backend).map((task) => task.title)).toEqual(['Saved now'])
+    })
+    expect(outcome.saved).toBe(true)
+  })
+
+  it('reports saved: false when the write fails, keeping the change in memory', () => {
+    const { result, setItem } = setup()
+    setItem.mockImplementation(() => {
+      throw createQuotaError()
+    })
+    let outcome
+    act(() => {
+      outcome = result.current.addTask({ title: 'Not saved' })
+    })
+    expect(outcome).toMatchObject({ ok: true, saved: false })
+    expect(result.current.tasks).toHaveLength(1)
+    expect(result.current.persistence.saveError).toBe(SAVE_ERROR.QUOTA_EXCEEDED)
+  })
+
+  it.each(['updateTask', 'toggleTaskCompleted', 'deleteTask'])('%s reports saved: false when storage is unavailable', (action) => {
+    const { result } = setup({ backend: null })
+    let id
+    act(() => {
+      id = result.current.addTask({ title: 'Memory only' }).task.id
+    })
+    let outcome
+    act(() => {
+      outcome = result.current[action](id, { title: 'Changed' })
+    })
+    expect(outcome).toEqual({ ok: true, saved: false })
+  })
+
+  it('applies several actions in the same event on top of each other', () => {
+    const { result, backend } = setup({ entries: { [KEY]: envelope([buildTask({ id: 'a' })]) } })
+    act(() => {
+      result.current.addTask({ title: 'First' })
+      result.current.addTask({ title: 'Second' })
+      result.current.toggleTaskCompleted('a')
+      result.current.toggleTaskCompleted('a') // a fast double click: back to active
+    })
+    expect(result.current.tasks.map((task) => task.title)).toEqual(['Write report', 'First', 'Second'])
+    expect(storedTasks(backend).map((task) => [task.title, task.completed])).toEqual([
+      ['Write report', false],
+      ['First', false],
+      ['Second', false],
+    ])
+  })
+
+  it('keeps action functions stable across task changes', () => {
+    const { result } = setup()
+    const { addTask, deleteTask } = result.current
+    act(() => {
+      addTask({ title: 'One' })
+    })
+    expect(result.current.addTask).toBe(addTask)
+    expect(result.current.deleteTask).toBe(deleteTask)
+  })
+})
+
+describe('cross-tab sync policy (Phase 6)', () => {
+  const external = (backend, value) => {
+    backend.setItem(KEY, value)
+  }
+
+  it('builds later local changes on top of external changes (no stale overwrite)', () => {
+    const { result, backend } = setup({ entries: { [KEY]: envelope([buildTask({ id: 'a', title: 'Mine' })]) } })
+    external(backend, envelope([buildTask({ id: 'a', title: 'Mine' }), buildTask({ id: 'b', title: 'From other tab' })]))
+    dispatchStorageEvent()
+
+    act(() => {
+      result.current.addTask({ title: 'Added here' })
+    })
+    expect(storedTasks(backend).map((task) => task.title)).toEqual(['Mine', 'From other tab', 'Added here'])
+  })
+
+  it('writes repaired external data back exactly once', () => {
+    const { result, backend, setItem } = setup()
+    external(backend, envelope([buildTask({ id: 'x', priority: 'URGENT' })]))
+    setItem.mockClear()
+    dispatchStorageEvent()
+
+    expect(result.current.tasks[0].priority).toBe('medium')
+    const taskWrites = setItem.mock.calls.filter(([key]) => key === KEY)
+    expect(taskWrites).toHaveLength(1)
+    expect(storedTasks(backend)[0].priority).toBe('medium')
+  })
+
+  it('restores its own tasks over unreadable external data, after backing that data up', () => {
+    const tasks = [buildTask({ id: 'a' })]
+    const { result, backend } = setup({ entries: { [KEY]: envelope(tasks) } })
+    external(backend, '{not json')
+    dispatchStorageEvent()
+
+    expect(result.current.tasks).toEqual(tasks)
+    expect(result.current.persistence.syncNotice).toBe('restored')
+    expect(storedTasks(backend)).toEqual(tasks)
+    const backups = Object.entries(backend.entries()).filter(([key]) => key.startsWith(BACKUP_KEY_PREFIX))
+    expect(backups.map(([, value]) => value)).toEqual(['{not json'])
+  })
+
+  it('keeps tasks in memory and stops saving when another tab writes a newer schema version', () => {
+    const tasks = [buildTask({ id: 'a' })]
+    const { result, backend, setItem } = setup({ entries: { [KEY]: envelope(tasks) } })
+    const newer = envelope([buildTask({ id: 'z' })], STORAGE_VERSION + 1)
+    external(backend, newer)
+    setItem.mockClear()
+    dispatchStorageEvent()
+
+    expect(result.current.tasks).toEqual(tasks)
+    expect(result.current.persistence).toMatchObject({ loadStatus: LOAD_STATUS.UNSUPPORTED_VERSION, writable: false })
+
+    let outcome
+    act(() => {
+      outcome = result.current.addTask({ title: 'In memory' })
+    })
+    expect(outcome.saved).toBe(false)
+    expect(setItem).not.toHaveBeenCalled()
+    expect(backend.getItem(KEY)).toBe(newer)
+  })
+
+  it('does not write anything when loading valid external data (no sync loop)', () => {
+    const { backend, setItem } = setup()
+    external(backend, envelope([buildTask({ id: 'b' })]))
+    setItem.mockClear()
+    dispatchStorageEvent()
+    dispatchStorageEvent() // repeated events are harmless
+    expect(setItem).not.toHaveBeenCalled()
+  })
+
+  it('ignores events once storage cannot be read', () => {
+    const tasks = [buildTask({ id: 'a' })]
+    const { result, backend } = setup({ entries: { [KEY]: envelope(tasks) } })
+    vi.spyOn(backend, 'getItem').mockImplementation(() => {
+      throw new Error('blocked')
+    })
+    dispatchStorageEvent()
+    expect(result.current.tasks).toEqual(tasks)
+  })
+
+  it('removes its storage listener on unmount', () => {
+    const removeEventListener = vi.spyOn(window, 'removeEventListener')
+    const { unmount } = setup()
+    unmount()
+    expect(removeEventListener).toHaveBeenCalledWith('storage', expect.any(Function))
   })
 })

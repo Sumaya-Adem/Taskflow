@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { LOAD_STATUS, SAVE_ERROR } from '../storage/storage.js'
 import { buildTask } from '../test/fixtures.js'
-import { TASK_ACTIONS, createTasksState, initialTasksState, tasksReducer } from './tasksReducer.js'
+import { SYNC_NOTICE, TASK_ACTIONS, createTasksState, initialTasksState, tasksReducer } from './tasksReducer.js'
 
 const NOW = new Date('2026-10-09T12:00:00.000Z')
 
@@ -28,6 +28,7 @@ describe('initial state', () => {
         backupKey: null,
         droppedCount: 0,
         saveError: null,
+        syncNotice: null,
         noticeDismissed: false,
       },
     })
@@ -45,6 +46,7 @@ describe('initial state', () => {
       backupKey: 'backup-key',
       droppedCount: 2,
       saveError: null,
+      syncNotice: null,
       noticeDismissed: false,
     })
   })
@@ -165,4 +167,32 @@ describe('persistence actions', () => {
 
 it('throws on unknown actions', () => {
   expect(() => tasksReducer(initialTasksState, { type: 'nope' })).toThrow('Unknown task action: nope')
+})
+
+describe('Phase 6: sync and save status', () => {
+  it('records a write-back failure from the load result', () => {
+    const state = createTasksState(loadResult({ status: LOAD_STATUS.REPAIRED, saveError: SAVE_ERROR.QUOTA_EXCEEDED }))
+    expect(state.persistence.saveError).toBe(SAVE_ERROR.QUOTA_EXCEEDED)
+  })
+
+  it('EXTERNAL_CHANGE_REJECTED keeps tasks and patches persistence, re-showing the notice', () => {
+    const tasks = [buildTask({ id: 'a' })]
+    let state = tasksReducer(stateWith(tasks), { type: TASK_ACTIONS.NOTICE_DISMISSED })
+    state = tasksReducer(state, { type: TASK_ACTIONS.EXTERNAL_CHANGE_REJECTED, patch: { syncNotice: SYNC_NOTICE.REMOVED } })
+    expect(state.tasks).toBe(tasks)
+    expect(state.persistence).toMatchObject({ syncNotice: SYNC_NOTICE.REMOVED, noticeDismissed: false })
+  })
+
+  it('a successful save resolves "removed" but not "restored"', () => {
+    const removed = tasksReducer(stateWith([]), { type: TASK_ACTIONS.EXTERNAL_CHANGE_REJECTED, patch: { syncNotice: SYNC_NOTICE.REMOVED } })
+    expect(tasksReducer(removed, { type: TASK_ACTIONS.SAVE_SUCCEEDED }).persistence.syncNotice).toBeNull()
+
+    const restored = tasksReducer(stateWith([]), { type: TASK_ACTIONS.EXTERNAL_CHANGE_REJECTED, patch: { syncNotice: SYNC_NOTICE.RESTORED } })
+    expect(tasksReducer(restored, { type: TASK_ACTIONS.SAVE_SUCCEEDED })).toBe(restored)
+  })
+
+  it('a fresh load clears any sync notice', () => {
+    const removed = tasksReducer(stateWith([]), { type: TASK_ACTIONS.EXTERNAL_CHANGE_REJECTED, patch: { syncNotice: SYNC_NOTICE.REMOVED } })
+    expect(tasksReducer(removed, { type: TASK_ACTIONS.LOADED, result: loadResult() }).persistence.syncNotice).toBeNull()
+  })
 })

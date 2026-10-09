@@ -240,8 +240,9 @@ export function createTaskStorage(
  * falls back to defaults without backups.
  *
  * @param {Storage | null | undefined} storage
+ * @param {{ eventTarget?: EventTarget }} [options] receives cross-tab `storage` events.
  */
-export function createPreferenceStorage(storage) {
+export function createPreferenceStorage(storage, { eventTarget = globalThis.window } = {}) {
   const backend = storage ?? null
 
   /** @returns {{ preferences: object, error: Error | null }} Never throws. */
@@ -261,5 +262,10 @@ export function createPreferenceStorage(storage) {
     return writeItem(backend, STORAGE_KEYS.PREFERENCES, JSON.stringify(normalizePreferences(preferences)))
   }
 
-  return { loadPreferences, savePreferences }
+  return {
+    loadPreferences,
+    savePreferences,
+    /** Notifies `onChange` when another tab modifies the stored preferences. */
+    subscribe: (onChange) => subscribeToKey(eventTarget, backend, STORAGE_KEYS.PREFERENCES, onChange),
+  }
 }

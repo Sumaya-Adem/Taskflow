@@ -14,6 +14,8 @@
   --color-surface-muted: light-dark(#eef0f6, #1f2431);
   --color-border: light-dark(#e2e5ee, #2a3040);
   --color-border-strong: light-dark(#c9cede, #3a4256);
+  /* Boundaries of form controls: >=3:1 against every surface (WCAG 1.4.11). */
+  --color-border-input: light-dark(#878ea3, #68718a);
 
   /* Text */
   --color-text: light-dark(#171a24, #e9ebf2);

@@ -18,10 +18,10 @@ export function Toast({ toast, onDismiss, duration = TOAST_DURATION_MS }) {
   }, [toast, onDismiss, duration])
 
   return (
-    <div className={styles.region} role="status" aria-live="polite">
+    <div className={styles.region} role="status" aria-live="polite" aria-label="Notifications">
       {toast && (
         <div key={toast.id} className={`${styles.toast} ${styles[toast.tone] ?? ''}`}>
-          <Icon name={toast.tone === 'error' ? 'alert' : 'checkCircle'} size={18} className={styles.icon} />
+          <Icon name={toast.tone === 'success' || !toast.tone ? 'checkCircle' : 'alert'} size={18} className={styles.icon} />
           <p className={styles.message}>{toast.message}</p>
           <Button variant="ghost" iconOnly className={styles.dismiss} onClick={onDismiss} aria-label="Dismiss message">
             <Icon name="close" size={16} />
