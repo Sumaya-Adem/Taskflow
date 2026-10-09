@@ -2,7 +2,7 @@
 
 TaskFlow is a clean, fast, responsive task management application for organising daily work and personal tasks. It runs entirely in the browser and persists data to `localStorage` — no backend, no account required.
 
-> **Status:** in development. The app shell, navigation, theming and the task state/storage foundation are in place; task management screens are being built in phases (see [Roadmap](#roadmap)).
+> **Status:** in development. Tasks can be created, edited, completed, reopened and deleted, and are saved in the browser. Search, filtering, sorting and the statistics dashboard are next (see [Roadmap](#roadmap)).
 
 ## Tech stack
 
@@ -55,7 +55,9 @@ Then open the URL printed in the terminal (by default <http://localhost:5173>).
 │   ├── App.jsx           # Providers, error boundary and route → page mapping
 │   ├── components/
 │   │   ├── layout/       # AppShell, Sidebar, NavMenu, AppHeader, PageHeader, Brand, ThemeToggle
-│   │   └── ui/           # Reusable primitives: Button, Icon, Panel, Notice, EmptyState, ErrorBoundary
+│   │   ├── tasks/        # TaskList, TaskItem, TaskForm, TaskFormDialog and display helpers
+│   │   └── ui/           # Reusable primitives: Button, Icon, Badge, Panel, FormField, Modal,
+│   │                     #   ConfirmDialog, Toast, Notice, EmptyState, ErrorBoundary
 │   ├── config/           # App configuration: priorities, categories, limits, themes, sort/filter options
 │   ├── domain/           # Pure logic: task model, preferences, dates, search/filter/sort, statistics
 │   ├── navigation/       # Route definitions and the hash-based router hook
@@ -75,7 +77,16 @@ The `domain/` and `storage/` layers have no React dependencies, and unit tests s
 - **State:** `TasksProvider` (React Context + `useReducer`) holds the task list and persistence status. Components use `useTasks()`, whose actions (`addTask`, `updateTask`, `toggleTaskCompleted`, `deleteTask`) validate input with the domain model and return `{ ok, errors }` results instead of throwing.
 - **Persistence:** storage is read once at startup (`createAppServices`). Every task change is saved automatically; failures are shown as dismissible notices and the app keeps working in memory. Changes made in another tab are picked up automatically.
 - **Navigation:** a small hash-based router (`#/dashboard`, `#/tasks`, `#/settings`) built on `useSyncExternalStore`. It needs no server configuration and supports deep links and the back button.
+- **Task management:** the My Tasks page lists tasks (newest first) and opens a native `<dialog>` for creating and editing. Forms keep only their own field values; validation and normalization come from the domain layer through the `useTasks()` actions, and errors are shown next to each field. Deleting asks for confirmation in an alert dialog that focuses Cancel first. Feedback appears in a toast announced to screen readers.
 - **Theming:** System, Light or Dark, chosen in Settings or toggled from the header. Colors are CSS custom properties defined with `light-dark()`, and a tiny inline script in `index.html` applies a saved choice before first paint.
+
+## Features
+
+- Create, edit, complete/reopen and delete tasks with a title, optional description, priority, category and optional due date
+- Overdue, due-today and due-soon tasks are highlighted; completed tasks show when they were finished
+- Accessible forms (labels, required markers, character counters, inline errors) and keyboard-friendly dialogs
+- Light, dark and system themes; responsive layout with a sidebar on desktop and a tab bar on mobile
+- Automatic saving in the browser, with clear notices if storage is unavailable, full or corrupted
 
 ## Data storage
 
@@ -99,7 +110,7 @@ Tasks are saved in `localStorage` under `taskflow:tasks` as a versioned envelope
 | 0 | Project scaffold and tooling | ✅ Done |
 | 1 | Domain model, validation, and storage layer | ✅ Done |
 | 2 | State management, theming, and app shell | ✅ Done |
-| 3 | Task create / edit / delete / complete | Planned |
+| 3 | Task create / edit / delete / complete | ✅ Done |
 | 4 | Search, filtering, and sorting | Planned |
 | 5 | Statistics dashboard | Planned |
 | 6 | Responsive, accessibility, and robustness polish | Planned |

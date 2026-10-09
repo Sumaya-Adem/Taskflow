@@ -87,6 +87,11 @@ a {
   background: var(--color-primary-soft);
 }
 
+/* Prevent the page behind an open modal dialog from scrolling. */
+html:has(dialog[open]:modal) {
+  overflow: hidden;
+}
+
 /* Utilities */
 .visually-hidden {
   position: absolute !important;

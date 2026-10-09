@@ -1,0 +1,86 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.labelRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.required {
+  margin-left: 2px;
+  color: var(--color-danger);
+}
+
+.optional {
+  margin-left: var(--space-1);
+  color: var(--color-text-subtle);
+  font-weight: var(--font-weight-regular);
+}
+
+.counter {
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.counterLimit {
+  color: var(--color-warning);
+}
+
+.hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Shared look for inputs, selects and textareas. */
+.control {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+  transition: border-color var(--duration-fast) var(--easing-standard);
+}
+
+.control:hover {
+  border-color: var(--color-text-subtle);
+}
+
+.control:focus-visible,
+.control:focus {
+  outline: 2px solid transparent;
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.control[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+textarea.control {
+  min-height: 6.5rem;
+  resize: vertical;
+}

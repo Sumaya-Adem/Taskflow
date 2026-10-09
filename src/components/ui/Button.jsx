@@ -4,6 +4,7 @@ const VARIANT_CLASSES = {
   primary: styles.primary,
   secondary: styles.secondary,
   ghost: styles.ghost,
+  danger: styles.danger,
 }
 
 /**

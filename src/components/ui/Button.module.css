@@ -47,6 +47,20 @@
   color: var(--color-text);
 }
 
+.danger {
+  background: var(--color-danger);
+  color: var(--color-on-primary);
+}
+
+.danger:hover {
+  background: color-mix(in srgb, var(--color-danger) 85%, black);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 /* Square, icon-only buttons; always pair with an aria-label. */
 .icon {
   width: 2.5rem;
