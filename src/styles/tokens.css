@@ -1,0 +1,97 @@
+/*
+ * Design tokens. Colors use light-dark(), so each token is defined once and
+ * follows the active color-scheme: the OS setting by default, or an explicit
+ * choice via [data-theme] on <html> (set by the theme provider and by the
+ * inline script in index.html before first paint).
+ */
+:root {
+  color-scheme: light dark;
+
+  /* Surfaces */
+  --color-bg: light-dark(#f5f6fa, #0c0e14);
+  --color-surface: light-dark(#ffffff, #151821);
+  --color-surface-raised: light-dark(#ffffff, #1b1f2b);
+  --color-surface-muted: light-dark(#eef0f6, #1f2431);
+  --color-border: light-dark(#e2e5ee, #2a3040);
+  --color-border-strong: light-dark(#c9cede, #3a4256);
+
+  /* Text */
+  --color-text: light-dark(#171a24, #e9ebf2);
+  --color-text-muted: light-dark(#596075, #a0a7bb);
+  --color-text-subtle: light-dark(#6b7287, #8a92a8);
+
+  /* Brand */
+  --color-primary: light-dark(#4f46e5, #8b93ff);
+  --color-primary-hover: light-dark(#4338ca, #a5abff);
+  --color-primary-soft: light-dark(#eef0ff, #22264a);
+  --color-on-primary: light-dark(#ffffff, #0c0e14);
+
+  /* Status */
+  --color-success: light-dark(#15803d, #4ade80);
+  --color-success-soft: light-dark(#ecfdf3, #133024);
+  --color-warning: light-dark(#a15c07, #fbbf24);
+  --color-warning-soft: light-dark(#fff8e6, #3a2c0c);
+  --color-danger: light-dark(#c62828, #f87171);
+  --color-danger-soft: light-dark(#fff1f1, #3d1a1d);
+
+  --focus-ring: 0 0 0 3px light-dark(rgb(79 70 229 / 0.4), rgb(139 147 255 / 0.5));
+
+  /* Typography */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.375rem;
+  --font-size-2xl: 1.75rem;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+
+  /* Spacing (4px scale) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* Shape and depth */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+  --shadow-sm: 0 1px 2px light-dark(rgb(16 24 40 / 0.06), rgb(0 0 0 / 0.4));
+  --shadow-md: 0 4px 12px light-dark(rgb(16 24 40 / 0.08), rgb(0 0 0 / 0.45));
+
+  /* Layout */
+  --sidebar-width: 15.5rem;
+  --header-height: 4rem;
+  --bottom-nav-height: 4rem;
+  --content-max-width: 72rem;
+  --page-gutter: var(--space-4);
+
+  /* Motion */
+  --duration-fast: 120ms;
+  --easing-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --page-gutter: var(--space-8);
+  }
+}

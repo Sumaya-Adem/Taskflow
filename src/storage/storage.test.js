@@ -6,6 +6,7 @@ import {
   BACKUP_KEY_PREFIX,
   LOAD_STATUS,
   SAVE_ERROR,
+  createPreferenceStorage,
   createTaskStorage,
   isQuotaExceededError,
   parseStoredTasks,
@@ -321,6 +322,89 @@ describe('createTaskStorage', () => {
       const { backupKey } = store.loadTasks()
       expect(store.saveTasks([buildTask()]).ok).toBe(true)
       expect(backend.getItem(backupKey)).toBe('broken')
+    })
+  })
+})
+
+describe('createTaskStorage().subscribe', () => {
+  const storageEvent = (key, storageArea) => Object.assign(new Event('storage'), { key, storageArea })
+
+  it('notifies on changes to the tasks key or a full clear', () => {
+    const backend = createMemoryStorage()
+    const target = new EventTarget()
+    const onChange = vi.fn()
+    createTaskStorage(backend, { eventTarget: target }).subscribe(onChange)
+
+    target.dispatchEvent(storageEvent(KEY, backend))
+    target.dispatchEvent(storageEvent(null, backend))
+    expect(onChange).toHaveBeenCalledTimes(2)
+  })
+
+  it('ignores other keys and other storage areas', () => {
+    const backend = createMemoryStorage()
+    const target = new EventTarget()
+    const onChange = vi.fn()
+    createTaskStorage(backend, { eventTarget: target }).subscribe(onChange)
+
+    target.dispatchEvent(storageEvent('other', backend))
+    target.dispatchEvent(storageEvent(KEY, createMemoryStorage()))
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('returns an unsubscribe function', () => {
+    const target = new EventTarget()
+    const onChange = vi.fn()
+    const unsubscribe = createTaskStorage(createMemoryStorage(), { eventTarget: target }).subscribe(onChange)
+    unsubscribe()
+    target.dispatchEvent(storageEvent(KEY))
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('is a no-op without storage or an event target', () => {
+    expect(createTaskStorage(null, { eventTarget: new EventTarget() }).subscribe(vi.fn())).toBeTypeOf('function')
+    expect(createTaskStorage(createMemoryStorage(), { eventTarget: null }).subscribe(vi.fn())).toBeTypeOf('function')
+  })
+})
+
+describe('createPreferenceStorage', () => {
+  const PREFS_KEY = STORAGE_KEYS.PREFERENCES
+
+  it('returns defaults when nothing is stored', () => {
+    expect(createPreferenceStorage(createMemoryStorage()).loadPreferences()).toEqual({
+      preferences: { theme: 'system' },
+      error: null,
+    })
+  })
+
+  it('round-trips saved preferences', () => {
+    const backend = createMemoryStorage()
+    const store = createPreferenceStorage(backend)
+    expect(store.savePreferences({ theme: 'dark', junk: 1 })).toEqual({ ok: true, reason: null, error: null })
+    expect(JSON.parse(backend.getItem(PREFS_KEY))).toEqual({ theme: 'dark' })
+    expect(store.loadPreferences().preferences).toEqual({ theme: 'dark' })
+  })
+
+  it('falls back to defaults for corrupt or invalid data', () => {
+    const corrupt = createPreferenceStorage(createMemoryStorage({ [PREFS_KEY]: '{not json' })).loadPreferences()
+    expect(corrupt.preferences).toEqual({ theme: 'system' })
+    expect(corrupt.error).toBeInstanceOf(SyntaxError)
+
+    const invalid = createPreferenceStorage(createMemoryStorage({ [PREFS_KEY]: '{"theme":"neon"}' })).loadPreferences()
+    expect(invalid).toEqual({ preferences: { theme: 'system' }, error: null })
+  })
+
+  it('handles unavailable storage and write failures without throwing', () => {
+    const unavailable = createPreferenceStorage(null)
+    expect(unavailable.loadPreferences().preferences).toEqual({ theme: 'system' })
+    expect(unavailable.savePreferences({ theme: 'dark' })).toMatchObject({ ok: false, reason: SAVE_ERROR.UNAVAILABLE })
+
+    const backend = createMemoryStorage()
+    vi.spyOn(backend, 'setItem').mockImplementation(() => {
+      throw createQuotaError()
+    })
+    expect(createPreferenceStorage(backend).savePreferences({ theme: 'dark' })).toMatchObject({
+      ok: false,
+      reason: SAVE_ERROR.QUOTA_EXCEEDED,
     })
   })
 })

@@ -1,5 +1,6 @@
 /**
- * Persistence adapter: the only module that touches `localStorage`.
+ * Persistence adapter: the only module that touches `localStorage` (apart
+ * from the tiny pre-render theme script in index.html).
  *
  * Tasks are stored under STORAGE_KEYS.TASKS as a versioned envelope:
  *   { "version": 1, "tasks": [ ...task records ] }
@@ -13,6 +14,7 @@
  */
 
 import { STORAGE_KEYS, STORAGE_VERSION } from '../config/constants.js'
+import { DEFAULT_PREFERENCES, normalizePreferences } from '../domain/preferences.js'
 import { generateId, normalizeTasks } from '../domain/task.js'
 
 export const LOAD_STATUS = Object.freeze({
@@ -68,6 +70,32 @@ export function isQuotaExceededError(error) {
   )
 }
 
+/** Writes one item, translating exceptions into a save result. */
+function writeItem(backend, key, value) {
+  try {
+    backend.setItem(key, value)
+    return { ok: true, reason: null, error: null }
+  } catch (error) {
+    const reason = isQuotaExceededError(error) ? SAVE_ERROR.QUOTA_EXCEEDED : SAVE_ERROR.WRITE_FAILED
+    return { ok: false, reason, error }
+  }
+}
+
+/**
+ * Calls `onChange` when another tab changes `key` (or clears storage).
+ * Returns an unsubscribe function; a no-op when events are unsupported.
+ */
+function subscribeToKey(eventTarget, backend, key, onChange) {
+  if (!backend || typeof eventTarget?.addEventListener !== 'function') return () => {}
+  const handleStorage = (event) => {
+    if (event.key !== key && event.key !== null) return
+    if (event.storageArea && event.storageArea !== backend) return
+    onChange()
+  }
+  eventTarget.addEventListener('storage', handleStorage)
+  return () => eventTarget.removeEventListener('storage', handleStorage)
+}
+
 function parseResult(status, { tasks = [], droppedCount = 0, repairedCount = 0, error = null } = {}) {
   return { status, tasks, droppedCount, repairedCount, error }
 }
@@ -121,9 +149,13 @@ export function parseStoredTasks(raw, { now = new Date(), generate = generateId 
  * Pass `null` to model unavailable storage.
  *
  * @param {Storage | null | undefined} storage
- * @param {{ clock?: () => Date, generate?: () => string }} [options]
+ * @param {{ clock?: () => Date, generate?: () => string, eventTarget?: EventTarget }} [options]
+ *   `eventTarget` receives cross-tab `storage` events (the window in browsers).
  */
-export function createTaskStorage(storage, { clock = () => new Date(), generate = generateId } = {}) {
+export function createTaskStorage(
+  storage,
+  { clock = () => new Date(), generate = generateId, eventTarget = globalThis.window } = {},
+) {
   const backend = storage ?? null
   // Set when stored data must not be overwritten (see SAVE_ERROR.READ_ONLY).
   let readOnlyReason = null
@@ -191,18 +223,43 @@ export function createTaskStorage(storage, { clock = () => new Date(), generate 
     if (!backend) return { ok: false, reason: SAVE_ERROR.UNAVAILABLE, error: null }
     if (readOnlyReason) return { ok: false, reason: SAVE_ERROR.READ_ONLY, error: null }
 
-    try {
-      backend.setItem(STORAGE_KEYS.TASKS, JSON.stringify({ version: STORAGE_VERSION, tasks }))
-      return { ok: true, reason: null, error: null }
-    } catch (error) {
-      const reason = isQuotaExceededError(error) ? SAVE_ERROR.QUOTA_EXCEEDED : SAVE_ERROR.WRITE_FAILED
-      return { ok: false, reason, error }
-    }
+    return writeItem(backend, STORAGE_KEYS.TASKS, JSON.stringify({ version: STORAGE_VERSION, tasks }))
   }
 
   return {
     isAvailable: () => backend !== null,
     loadTasks,
     saveTasks,
+    /** Notifies `onChange` when another tab modifies the stored tasks. */
+    subscribe: (onChange) => subscribeToKey(eventTarget, backend, STORAGE_KEYS.TASKS, onChange),
   }
+}
+
+/**
+ * Creates a preferences store. Preferences are non-critical: unreadable data
+ * falls back to defaults without backups.
+ *
+ * @param {Storage | null | undefined} storage
+ */
+export function createPreferenceStorage(storage) {
+  const backend = storage ?? null
+
+  /** @returns {{ preferences: object, error: Error | null }} Never throws. */
+  function loadPreferences() {
+    if (!backend) return { preferences: { ...DEFAULT_PREFERENCES }, error: null }
+    try {
+      const raw = backend.getItem(STORAGE_KEYS.PREFERENCES)
+      return { preferences: normalizePreferences(raw === null ? null : JSON.parse(raw)), error: null }
+    } catch (error) {
+      return { preferences: { ...DEFAULT_PREFERENCES }, error }
+    }
+  }
+
+  /** @returns {{ ok: boolean, reason: string | null, error: Error | null }} Never throws. */
+  function savePreferences(preferences) {
+    if (!backend) return { ok: false, reason: SAVE_ERROR.UNAVAILABLE, error: null }
+    return writeItem(backend, STORAGE_KEYS.PREFERENCES, JSON.stringify(normalizePreferences(preferences)))
+  }
+
+  return { loadPreferences, savePreferences }
 }

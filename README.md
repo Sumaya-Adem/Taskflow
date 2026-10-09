@@ -2,7 +2,7 @@
 
 TaskFlow is a clean, fast, responsive task management application for organising daily work and personal tasks. It runs entirely in the browser and persists data to `localStorage` — no backend, no account required.
 
-> **Status:** early development. The project scaffold is in place; features are being built in phases (see [Roadmap](#roadmap)).
+> **Status:** in development. The app shell, navigation, theming and the task state/storage foundation are in place; task management screens are being built in phases (see [Roadmap](#roadmap)).
 
 ## Tech stack
 
@@ -51,18 +51,31 @@ Then open the URL printed in the terminal (by default <http://localhost:5173>).
 ├── index.html            # HTML entry point
 ├── public/               # Static assets copied as-is (favicon)
 ├── src/
-│   ├── main.jsx          # React entry point
-│   ├── App.jsx           # Root component
-│   ├── config/           # App configuration: priorities, categories, limits, sort/filter options
-│   ├── domain/           # Pure logic: task model, dates, search/filter/sort, statistics
+│   ├── main.jsx          # Entry point: loads storage once, then renders <App>
+│   ├── App.jsx           # Providers, error boundary and route → page mapping
+│   ├── components/
+│   │   ├── layout/       # AppShell, Sidebar, NavMenu, AppHeader, PageHeader, Brand, ThemeToggle
+│   │   └── ui/           # Reusable primitives: Button, Icon, Panel, Notice, EmptyState, ErrorBoundary
+│   ├── config/           # App configuration: priorities, categories, limits, themes, sort/filter options
+│   ├── domain/           # Pure logic: task model, preferences, dates, search/filter/sort, statistics
+│   ├── navigation/       # Route definitions and the hash-based router hook
+│   ├── pages/            # Dashboard, My Tasks and Settings pages
+│   ├── state/            # Task and theme providers, reducer, hooks, storage notices
 │   ├── storage/          # localStorage adapter (the only module that touches browser storage)
-│   ├── styles/           # Global styles and design tokens
-│   └── test/             # Test setup, fixtures and an in-memory Storage mock
+│   ├── styles/           # Design tokens (light/dark) and global styles
+│   └── test/             # Test setup, fixtures, an in-memory Storage mock and render helpers
 ├── eslint.config.js      # ESLint flat config
 └── vite.config.js        # Vite + Vitest configuration
 ```
 
-The `state/` and `components/` directories are added in later phases. The `domain/` and `storage/` layers have no React dependencies, and unit tests sit next to the modules they cover.
+The `domain/` and `storage/` layers have no React dependencies, and unit tests sit next to the modules they cover.
+
+## Architecture overview
+
+- **State:** `TasksProvider` (React Context + `useReducer`) holds the task list and persistence status. Components use `useTasks()`, whose actions (`addTask`, `updateTask`, `toggleTaskCompleted`, `deleteTask`) validate input with the domain model and return `{ ok, errors }` results instead of throwing.
+- **Persistence:** storage is read once at startup (`createAppServices`). Every task change is saved automatically; failures are shown as dismissible notices and the app keeps working in memory. Changes made in another tab are picked up automatically.
+- **Navigation:** a small hash-based router (`#/dashboard`, `#/tasks`, `#/settings`) built on `useSyncExternalStore`. It needs no server configuration and supports deep links and the back button.
+- **Theming:** System, Light or Dark, chosen in Settings or toggled from the header. Colors are CSS custom properties defined with `light-dark()`, and a tiny inline script in `index.html` applies a saved choice before first paint.
 
 ## Data storage
 
@@ -77,6 +90,7 @@ Tasks are saved in `localStorage` under `taskflow:tasks` as a versioned envelope
 - If stored data is corrupted or had to be repaired, the original is first copied to `taskflow:tasks:backup:<timestamp>` so it is never silently lost.
 - Data written by a newer, unsupported schema version is left untouched, and saving is disabled for that session.
 - Statistics are always computed from the task list and never stored.
+- Preferences (currently the theme) are stored separately under `taskflow:preferences`.
 
 ## Roadmap
 
@@ -84,7 +98,7 @@ Tasks are saved in `localStorage` under `taskflow:tasks` as a versioned envelope
 | --- | --- | --- |
 | 0 | Project scaffold and tooling | ✅ Done |
 | 1 | Domain model, validation, and storage layer | ✅ Done |
-| 2 | State management, theming, and app shell | Planned |
+| 2 | State management, theming, and app shell | ✅ Done |
 | 3 | Task create / edit / delete / complete | Planned |
 | 4 | Search, filtering, and sorting | Planned |
 | 5 | Statistics dashboard | Planned |

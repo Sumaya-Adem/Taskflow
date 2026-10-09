@@ -10,5 +10,6 @@ export default defineConfig({
     include: ['src/**/*.test.{js,jsx}'],
     css: { modules: { classNameStrategy: 'non-scoped' } },
     restoreMocks: true,
+    unstubGlobals: true,
   },
 })
