@@ -1,7 +1,7 @@
 {
   "name": "taskflow",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "A clean, fast, responsive task management app built with React and Vite.",
   "type": "module",
   "engines": {
@@ -35,5 +35,9 @@
     "jsdom": "^29.1.1",
     "vite": "^8.3.4",
     "vitest": "^5.0.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sumaya-Adem/Taskflow.git"
   }
 }
